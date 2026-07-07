@@ -6,9 +6,15 @@ require linux-rockchip.inc
 
 inherit local-git
 
-SRCREV = "${AUTOREV}"
+# armbian/linux-rockchip rk-6.1-rkr5.1 (6.1.115). This is the tree the NixOS Rock 5B+/5T
+# reference builds and runs on real hardware with working GPU/NIC/WiFi + docker, so we use
+# it instead of radxa/kernel linux-6.1-stan-rkr4.1-buildroot. The full kernel config comes
+# from that same NixOS reference (see linux-rockchip_6.1.bbappend, rock-5t only).
+# Refresh with:
+#   git ls-remote https://github.com/armbian/linux-rockchip refs/heads/rk-6.1-rkr5.1
+SRCREV = "b908c7339f51eddcfe8402cd15d1e1f8f4e67c29"
 SRC_URI = " \
-	git://github.com/radxa/kernel.git;protocol=https;branch=linux-6.1-stan-rkr4.1-buildroot; \
+	git://github.com/armbian/linux-rockchip.git;protocol=https;branch=rk-6.1-rkr5.1; \
 	file://${THISDIR}/files/cgroups.cfg \
 "
 

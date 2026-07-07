@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+log() {
+    printf 'rock5t-r8169: %s\n' "$*" > /dev/kmsg 2>/dev/null || true
+    printf 'rock5t-r8169: %s\n' "$*" > /dev/console 2>/dev/null || true
+}
+
+(
+    sleep "${R8169_DELAY:-120}"
+    log "loading r8169"
+    if /sbin/modprobe r8169; then
+        log "r8169 loaded"
+    else
+        rc=$?
+        log "r8169 load failed rc=$rc"
+    fi
+) &
+
+log "scheduled non-blocking r8169 load"
+exit 0

@@ -1,0 +1,12 @@
+[Unit]
+Description=Load ROCK 5T RTL8125B Ethernet driver after early boot
+After=multi-user.target systemd-udevd.service local-fs.target
+Wants=systemd-udevd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/r8169-delayed-load
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

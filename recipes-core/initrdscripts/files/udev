@@ -1,0 +1,51 @@
+#!/bin/sh
+# ROCK 5T resolves root by filesystem label (resin-rootA), so udev must coldplug:
+# the mmc partitions are enumerated by the kernel before udevd starts, and without
+# a trigger their uevents are lost and no /dev/disk/by-label/* links are created.
+# The old "coldplug segfaults before rootfs" concern was the rkr4.1 kernel's early
+# SMP/udev/vmalloc race: udevadm SIGSEGV'd at ~T+3s so no /dev/disk/by-* links were
+# ever created (the reference dodged it with maxcpus=1 udev.children_max=1). This
+# kernel boots all cores clean (no T+3s crash in the boot log), so coldplug is back.
+# If udevadm trigger segfaults here again, add "maxcpus=1 udev.children_max=1" to the
+# extlinux APPEND to serialize udev (proven on the reference hardware).
+
+udev_shutdown_hook_handler() {
+	status=$1
+	module=$2
+	if [ "$status" = "pre" ] && [ "$module" = "finish" ]; then
+		killall "$(basename "$_UDEV_DAEMON")" 2>/dev/null
+	fi
+}
+
+udev_daemon() {
+	OPTIONS="/sbin/udev/udevd /sbin/udevd /lib/udev/udevd /lib/systemd/systemd-udevd"
+	for o in $OPTIONS; do
+		if [ -x "$o" ]; then
+			echo "$o"
+			return 0
+		fi
+	done
+	return 1
+}
+
+_UDEV_DAEMON="$(udev_daemon)"
+
+udev_enabled() {
+	if [ -z "$_UDEV_DAEMON" ]; then
+		msg "WARNING: Cannot find the udev daemon; daemon will not be started in initramfs."
+		return 1
+	fi
+	return 0
+}
+
+udev_run() {
+	add_module_pre_hook "udev_shutdown_hook_handler"
+	mkdir -p /run
+	mkdir -p /var/run
+	sh -c "exec 4< /dev/console" || { exec 0> /dev/null; exec 1> /dev/null; exec 2> /dev/null; }
+	"$_UDEV_DAEMON" --daemon
+	# Coldplug already-present devices so by-label/by-partlabel links exist for
+	# root discovery (the mmc partitions appeared before udevd was listening).
+	udevadm trigger --action=add
+	udevadm settle
+}
